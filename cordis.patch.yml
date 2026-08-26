@@ -1,0 +1,17 @@
+# dsh-code-nav bundle patch
+#
+# 安装方式（推荐）：
+#   dsh plugin --profile web add <dsh-code-nav-0.1.0.tgz>
+#   dsh 会把这个包加入 dsh.profile.bundles，启动时由本补丁插入 loader entry
+#   并挂载客户端 bundle（client-modules 依据 entry.name 注册并下发）。
+#
+# 手动方式（备选）：
+#   在 ~/.dsh/profiles/web/cordis.patch.yml 末尾追加：
+#     - insert:
+#         - id: dsh-code-nav
+#           name: 'dsh-code-nav'
+#   并把包复制到 ~/.dsh/profiles/web/node_modules/dsh-code-nav。
+# 注意：两种方式二选一，勿重复注册。
+- insert:
+    - id: dsh-code-nav
+      name: 'dsh-code-nav'

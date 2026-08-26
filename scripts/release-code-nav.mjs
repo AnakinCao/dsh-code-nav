@@ -66,7 +66,8 @@ if (exist.status === 404) {
 }
 
 // 3) remote + push
-const remote = sh("git", ["-C", ROOT, "remote", "get-url", "origin"]).trim();
+let remote = "";
+try { remote = sh("git", ["-C", ROOT, "remote", "get-url", "origin"]).trim(); } catch { /* no remote yet */ }
 const url = "https://github.com/" + REPO + ".git";
 if (remote !== url) {
   if (remote) sh("git", ["-C", ROOT, "remote", "set-url", "origin", url]);
@@ -80,7 +81,7 @@ try {
 } catch { sh("git", ["-C", ROOT, "tag", "-f", TAG]); }
 sh("git", ["-C", ROOT, "push", "-f", "origin", TAG]);
 
-// 5) release
+// 5) release（幂等：tag 已有 release 则复用）
 const body = [
   "## v0.1.0",
   "",
@@ -105,27 +106,42 @@ const body = [
   "- `node test/code-nav.test.mjs` — 25/25 unit tests pass (tokenizer + per-language outline + search)",
   "- `node --check lib/client.js` — bundle syntax OK",
 ].join("\n");
+let releaseId;
+{
+  const existing = await GH("/repos/" + REPO + "/releases/tags/" + TAG);
+  if (existing.ok) {
+    const d = await existing.json();
+    releaseId = d.id;
+    console.log("RELEASE EXISTS:", d.html_url);
+  } else {
+    const rel = await GH("/repos/" + REPO + "/releases", {
+      method: "POST",
+      body: JSON.stringify({
+        tag_name: TAG,
+        target_commitish: "main",
+        name: TAG,
+        body,
+        draft: false,
+        prerelease: false,
+      }),
+    });
+    const rd = await rel.json();
+    if (!rel.ok) { console.error("release failed", rel.status, rd.message || "", rd.errors || ""); process.exit(1); }
+    releaseId = rd.id;
+    console.log("RELEASE CREATED:", rd.html_url);
+  }
+}
 
-const rel = await GH("/repos/" + REPO + "/releases", {
-  method: "POST",
-  body: JSON.stringify({
-    tag_name: TAG,
-    target_commitish: "main",
-    name: TAG,
-    body,
-    draft: false,
-    prerelease: false,
-  }),
-});
-const rd = await rel.json();
-if (!rel.ok) { console.error("release failed", rel.status, rd.message || "", rd.errors || ""); process.exit(1); }
-console.log("RELEASE CREATED:", rd.html_url);
-
-// 6) 上传 tgz 资产
+// 6) 上传 tgz 资产（uploads.github.com，非 api.github.com）
 const buf = readFileSync(TGZ);
-const up = await GH("/repos/" + REPO + "/releases/" + rd.id + "/assets?name=dsh-code-nav-0.1.0.tgz", {
+const up = await fetch("https://uploads.github.com/repos/" + REPO + "/releases/" + releaseId + "/assets?name=dsh-code-nav-0.1.0.tgz", {
   method: "POST",
-  headers: { "Content-Type": "application/gzip" },
+  headers: {
+    Authorization: "Bearer " + token,
+    Accept: "application/vnd.github+json",
+    "User-Agent": "dsh-release",
+    "Content-Type": "application/gzip",
+  },
   body: buf,
 });
 const ud = await up.json();

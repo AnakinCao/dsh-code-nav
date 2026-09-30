@@ -9,6 +9,7 @@ DSH（DeepSeek Harness）Web 插件 —— **dsh-better-sidebar 代码预览导�
 - 🎨 **按类型语法高亮** —— 扩展名 → 语言识别，轻量自研分词器（注释 / 字符串 / 关键字 / 类型 / 数字 / 函数），深浅色主题自动跟随
 - 🧭 **符号大纲切换** —— 解析 class / interface / struct / enum / impl、方法 / 函数、变量 / 字段 / 常量；按「全部 / 类 / 方法 / 变量」筛选，下拉符号列表一键跳转定位（行闪烁）
 - 🔍 **文件内查找** —— 高亮全部匹配、当前匹配强调、`n/m` 计数、↑/↓ 或 `Enter` / `Shift+Enter` 上下跳转、区分大小写开关
+- 🖱️ **选中文字 → 添加到对话** —— 在预览里划选任意代码，选区上方浮出「添加到对话」按钮，点击即把选中内容按 `相对路径:起止行` 围栏代码块插进当前会话输入框（与 better-sidebar 内置查看器同一载荷形状；超过 500 字的选区只插路径行）
 
 ## 前置
 
@@ -45,7 +46,7 @@ dsh plugin --profile web add <dsh-code-nav-0.1.0.tgz>
 ## 开发
 
 ```sh
-node test/code-nav.test.mjs   # 纯逻辑单测（25 例：分词 + 各语言大纲 + 查找）
+node test/code-nav.test.mjs   # 纯逻辑单测（28 例：分词 + 各语言大纲 + 查找 + 选区载荷）
 node scripts/build.mjs        # 把 src/*.js 内联进 lib/client.js（无第三方 bundler）
 node --check lib/client.js    # 语法校验
 ```
@@ -54,12 +55,14 @@ node --check lib/client.js    # 语法校验
 - `src/tokenize.js` —— 跨行状态机分词器（块注释、Python 三引号、C# 逐字字符串、转义）
 - `src/outline.js` —— 括号深度 / 缩进驱动的大纲解析（Allman 大括号换行风格已支持）
 - `src/search.js` —— 文件内查找与 token×匹配区间合并渲染
-- `scripts/client.template.js` —— React 预览组件模板（构建时注入纯模块）
+- `src/selection.js` —— 选区 → 草稿载荷（`相对路径:起止行` 围栏块；超长选区只留路径行）
+- `scripts/client.template.js` —— React 预览组件模板（构建时注入纯模块；含选区浮层与草稿插入）
 
 ## 已知限制
 
 - 高亮与大纲为轻量正则解析，非编译器级精度（复杂泛型、宏、模板元编程等场景可能漏检/误检）
 - 接管代码预览为**只读**；需要编辑时可在 better-sidebar 设置中关闭本插件回退内置编辑器
+- 「添加到对话」按会话 cwd 取相对路径；纯文本兜底视图（500KB 截断时无行号行容器）不带行号
 - 单文件内容上限 500KB（与宿主截断一致，超出显示提示）
 - Vue / Svelte 高亮按 `<script>` 内 JS/TS 处理，模板部分不高亮
 

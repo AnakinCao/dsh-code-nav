@@ -10,11 +10,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const MODULES = ["lang-registry", "tokenize", "outline", "search"];
+const MODULES = ["lang-registry", "tokenize", "outline", "search", "selection"];
 const EXPORTS = [
   "langOf", "langLabel", "LANG_EXT", "LANG_META",
   "tokenizeLines", "outlineOf", "kindGroup",
-  "findMatches", "spansOfLine"
+  "findMatches", "spansOfLine",
+  "SELECTION_LIMIT", "selectionHeader", "buildSelectionInsert"
 ];
 
 const parts = [];

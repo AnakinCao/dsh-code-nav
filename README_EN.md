@@ -7,6 +7,7 @@ When you open a code file in the sidebar, it detects the language by file type a
 - 🎨 **Per-language syntax highlighting** — extension → language detection with a lightweight hand-rolled tokenizer (comments / strings / keywords / types / numbers / functions); light & dark palettes follow the app theme automatically
 - 🧭 **Symbol outline navigation** — parses `class` / `interface` / `struct` / `enum` / `impl`, methods / functions, variables / fields / constants; filter by **All / Class / Method / Variable** chips, or jump from a dropdown symbol list (line flash on jump)
 - 🔍 **In-file search** — highlights all matches, emphasizes the current one, shows `n/m` count, navigates with ↑/↓ buttons or `Enter` / `Shift+Enter`, with a match-case toggle
+- 🖱️ **Selection → add to conversation** — select code in the preview and an "Add to conversation" button floats above the selection; clicking it inserts the selection into the current session's composer as a fenced block headed by `relative/path:start[-end]` (the same payload shape as the better-sidebar built-in viewers; selections over 500 characters insert the path line only)
 
 ## Prerequisites
 
@@ -43,7 +44,7 @@ Non-code files (markdown / html / images / pdf …) keep using the built-in view
 ## Development
 
 ```sh
-node test/code-nav.test.mjs   # unit tests (25 cases: tokenizer + per-language outline + search)
+node test/code-nav.test.mjs   # unit tests (28 cases: tokenizer + per-language outline + search + selection payload)
 node scripts/build.mjs        # inlines src/*.js into lib/client.js (no third-party bundler)
 node --check lib/client.js    # syntax check
 ```
@@ -52,12 +53,14 @@ node --check lib/client.js    # syntax check
 - `src/tokenize.js` — cross-line state-machine tokenizer (block comments, Python triple quotes, C# verbatim strings, escapes)
 - `src/outline.js` — brace-depth / indent driven outline parser (Allman brace-on-next-line style supported)
 - `src/search.js` — in-file match finder + token×match span merging
-- `scripts/client.template.js` — React preview component template (pure modules injected at build time)
+- `src/selection.js` — selection → draft payload (`relative/path:start[-end]` fence; over-long selections keep the path line only)
+- `scripts/client.template.js` — React preview component template (pure modules injected at build time; owns the selection popup and the draft insert)
 
 ## Known limitations
 
 - Highlighting and outline are lightweight regex parsing, not compiler-grade (complex generics, macros, template metaprogramming may be missed or misdetected)
 - Preview takeover is **read-only**; disable the plugin in better-sidebar settings to get the built-in editor back
+- "Add to conversation" resolves the path relative to the session cwd; the plain-text fallback view (no line containers, e.g. a 500KB-truncated file) carries no line numbers
 - Single-file content cap 500KB (matches host truncation; a notice is shown beyond it)
 - Vue / Svelte highlight the `<script>` block as JS/TS; template sections are not highlighted
 

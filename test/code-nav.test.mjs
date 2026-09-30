@@ -4,6 +4,7 @@ import { langOf, LANG_EXT } from "../src/lang-registry.js";
 import { tokenizeLines } from "../src/tokenize.js";
 import { outlineOf, kindGroup } from "../src/outline.js";
 import { findMatches, spansOfLine } from "../src/search.js";
+import { SELECTION_LIMIT, selectionHeader, buildSelectionInsert } from "../src/selection.js";
 
 // ---------- lang-registry ----------
 test("langOf maps extensions", () => {
@@ -500,4 +501,32 @@ test("spansOfLine: match overlay", () => {
   assert.ok(match !== undefined);
   assert.equal(match.text, "x");
   assert.equal(match.current, true);
+});
+
+// ---------- selection → draft ----------
+test("selectionHeader: cwd-relative path with line spans", () => {
+  const cwd = "C:\\repo\\app";
+  assert.equal(selectionHeader("C:\\repo\\app\\src\\a.ts", cwd, { start: 12, end: 12 }), "src/a.ts:12");
+  assert.equal(selectionHeader("C:\\repo\\app\\src\\a.ts", cwd, { start: 12, end: 15 }), "src/a.ts:12-15");
+  // 行号不可得（纯文本兜底视图）→ 只写路径
+  assert.equal(selectionHeader("C:\\repo\\app\\src\\a.ts", cwd, undefined), "src/a.ts");
+  // cwd 之外 → 原样绝对路径
+  assert.equal(selectionHeader("D:\\other\\b.ts", cwd, { start: 3, end: 3 }), "D:\\other\\b.ts:3");
+  // cwd 未知 → 绝对路径
+  assert.equal(selectionHeader("/repo/a.ts", undefined, { start: 1, end: 2 }), "/repo/a.ts:1-2");
+  // 大小写不敏感的前缀匹配（Windows 盘符）
+  assert.equal(selectionHeader("c:\\repo\\app\\x.ts", "C:\\repo\\App", undefined), "x.ts");
+});
+
+test("buildSelectionInsert: fenced block within the limit", () => {
+  const out = buildSelectionInsert("C:\\repo\\app\\src\\a.ts", "C:\\repo\\app", { start: 4, end: 6 }, "let x = 1\nlet y = 2");
+  assert.equal(out, "```src/a.ts:4-6\nlet x = 1\nlet y = 2\n```");
+});
+
+test("buildSelectionInsert: over the limit keeps only the header", () => {
+  const long = "x".repeat(SELECTION_LIMIT + 1);
+  assert.equal(buildSelectionInsert("/repo/a.ts", "/repo", { start: 1, end: 1 }, long), "a.ts:1");
+  // 边界：正好等于上限仍然带正文
+  const edge = "y".repeat(SELECTION_LIMIT);
+  assert.ok(buildSelectionInsert("/repo/a.ts", "/repo", undefined, edge).includes(edge));
 });
